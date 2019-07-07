@@ -1,29 +1,23 @@
-import { Component } from 'react';
-import React from 'react';
-import PropTypes from 'prop-types';
-import { OHIF } from 'ohif-core';
-import ConnectedLayoutManager from './ConnectedLayoutManager.js';
 import './ViewerMain.css';
+
+import { Component } from 'react';
+import ConnectedLayoutManager from './ConnectedLayoutManager.js';
+import ConnectedToolContextMenu from './ConnectedToolContextMenu.js';
+import PropTypes from 'prop-types';
+import React from 'react';
 
 class ViewerMain extends Component {
   static propTypes = {
-    studies: PropTypes.array.isRequired,
+    activeViewportIndex: PropTypes.number.isRequired,
+    studies: PropTypes.array,
+    viewportSpecificData: PropTypes.object.isRequired,
+    layout: PropTypes.object.isRequired,
     setViewportSpecificData: PropTypes.func.isRequired,
     clearViewportSpecificData: PropTypes.func.isRequired,
-    setToolActive: PropTypes.func.isRequired,
-    setActiveViewportSpecificData: PropTypes.func.isRequired,
   };
 
   constructor(props) {
     super(props);
-
-    // Initialize hotkeys
-    new OHIF.HotkeysUtil('viewer', {
-      setViewportSpecificData: props.setViewportSpecificData,
-      clearViewportSpecificData: props.clearViewportSpecificData,
-      setToolActive: props.setToolActive,
-      setActiveViewportSpecificData: props.setActiveViewportSpecificData,
-    });
 
     this.state = {
       displaySets: [],
@@ -65,11 +59,23 @@ class ViewerMain extends Component {
     //window.addEventListener('beforeunload', unloadHandlers.beforeUnload);
 
     // Get all the display sets for the viewer studies
-    const displaySets = this.getDisplaySets(this.props.studies);
+    if (this.props.studies) {
+      const displaySets = this.getDisplaySets(this.props.studies);
 
-    this.setState({
-      displaySets,
-    });
+      this.setState({
+        displaySets,
+      });
+    }
+  }
+
+  componentDidUpdate(prevProps) {
+    if (this.props.studies !== prevProps.studies) {
+      const displaySets = this.getDisplaySets(this.props.studies);
+
+      this.setState({
+        displaySets,
+      });
+    }
   }
 
   getViewportData = () => {
@@ -131,11 +137,16 @@ class ViewerMain extends Component {
   render() {
     return (
       <div className="ViewerMain">
-        <ConnectedLayoutManager
-          studies={this.props.studies}
-          viewportData={this.getViewportData()}
-          setViewportData={this.setViewportData}
-        />
+        {this.state.displaySets.length && (
+          <ConnectedLayoutManager
+            studies={this.props.studies}
+            viewportData={this.getViewportData()}
+            setViewportData={this.setViewportData}
+          >
+            {/* Children to add to each viewport that support children */}
+            <ConnectedToolContextMenu />
+          </ConnectedLayoutManager>
+        )}
       </div>
     );
   }
@@ -146,6 +157,10 @@ class ViewerMain extends Component {
     Object.keys(viewportSpecificData).forEach(viewportIndex => {
       this.props.clearViewportSpecificData(viewportIndex);
     });
+
+    // TODO: These don't have to be viewer specific?
+    // Could qualify for other routes?
+    // hotkeys.destroy();
 
     // Remove beforeUnload event handler...
     //window.removeEventListener('beforeunload', unloadHandlers.beforeUnload);

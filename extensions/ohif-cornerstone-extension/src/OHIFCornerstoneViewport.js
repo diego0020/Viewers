@@ -1,9 +1,9 @@
 import React, { Component } from 'react';
-import PropTypes from 'prop-types';
-import OHIF from 'ohif-core';
+
 import ConnectedCornerstoneViewport from './ConnectedCornerstoneViewport';
+import OHIF from 'ohif-core';
+import PropTypes from 'prop-types';
 import cornerstone from 'cornerstone-core';
-import './config';
 import handleSegmentationStorage from './handleSegmentationStorage.js';
 
 const { StackManager } = OHIF.utils;
@@ -18,7 +18,7 @@ cornerstone.metaData.addProvider(
 StackManager.setMetadataProvider(metadataProvider);
 
 const SOP_CLASSES = {
-  SEGMENTATION_STORAGE: '1.2.840.10008.5.1.4.1.1.66.4'
+  SEGMENTATION_STORAGE: '1.2.840.10008.5.1.4.1.1.66.4',
 };
 
 const specialCaseHandlers = {};
@@ -28,11 +28,11 @@ specialCaseHandlers[
 
 class OHIFCornerstoneViewport extends Component {
   state = {
-    viewportData: null
+    viewportData: null,
   };
 
   static defaultProps = {
-    customProps: {}
+    customProps: {},
   };
 
   static propTypes = {
@@ -40,7 +40,7 @@ class OHIFCornerstoneViewport extends Component {
     displaySet: PropTypes.object,
     viewportIndex: PropTypes.number,
     children: PropTypes.node,
-    customProps: PropTypes.object
+    customProps: PropTypes.object,
   };
 
   static id = 'OHIFCornerstoneViewport';
@@ -54,31 +54,60 @@ class OHIFCornerstoneViewport extends Component {
     StackManager.clearStacks();
   }
 
+  /**
+   * Obtain the CornerstoneTools Stack for the specified display set.
+   *
+   * @param {Object[]} studies
+   * @param {String} studyInstanceUid
+   * @param {String} displaySetInstanceUid
+   * @param {String} [sopInstanceUid]
+   * @param {Number} [frameIndex=1]
+   * @return {Object} CornerstoneTools Stack
+   */
   static getCornerstoneStack(
     studies,
     studyInstanceUid,
     displaySetInstanceUid,
     sopInstanceUid,
-    frameIndex
+    frameIndex = 0
   ) {
+    if (!studies || !studies.length) {
+      throw new Error('Studies not provided.');
+    }
+
+    if (!studyInstanceUid) {
+      throw new Error('StudyInstanceUID not provided.');
+    }
+
+    if (!displaySetInstanceUid) {
+      throw new Error('StudyInstanceUID not provided.');
+    }
+
     // Create shortcut to displaySet
     const study = studies.find(
       study => study.studyInstanceUid === studyInstanceUid
     );
 
+    if (!study) {
+      throw new Error('Study not found.');
+    }
+
     const displaySet = study.displaySets.find(set => {
       return set.displaySetInstanceUid === displaySetInstanceUid;
     });
+
+    if (!displaySet) {
+      throw new Error('Display Set not found.');
+    }
 
     // Get stack from Stack Manager
     const storedStack = StackManager.findOrCreateStack(study, displaySet);
 
     // Clone the stack here so we don't mutate it
     const stack = Object.assign({}, storedStack);
+    stack.currentImageIdIndex = frameIndex;
 
-    if (frameIndex !== undefined) {
-      stack.currentImageIdIndex = frameIndex;
-    } else if (sopInstanceUid) {
+    if (sopInstanceUid) {
       const index = stack.imageIds.findIndex(imageId => {
         const sopCommonModule = cornerstone.metaData.get(
           'sopCommonModule',
@@ -94,10 +123,10 @@ class OHIFCornerstoneViewport extends Component {
       if (index > -1) {
         stack.currentImageIdIndex = index;
       } else {
-        stack.currentImageIdIndex = 0;
+        console.warn(
+          'SOPInstanceUID provided was not found in specified DisplaySet'
+        );
       }
-    } else {
-      stack.currentImageIdIndex = 0;
     }
 
     return stack;
@@ -154,7 +183,7 @@ class OHIFCornerstoneViewport extends Component {
         viewportData = {
           studyInstanceUid,
           displaySetInstanceUid,
-          stack
+          stack,
         };
 
         break;
@@ -170,7 +199,7 @@ class OHIFCornerstoneViewport extends Component {
       displaySetInstanceUid,
       sopClassUids,
       sopInstanceUid,
-      frameIndex
+      frameIndex,
     } = displaySet;
 
     if (sopClassUids && sopClassUids.length > 1) {
@@ -190,7 +219,7 @@ class OHIFCornerstoneViewport extends Component {
       frameIndex
     ).then(viewportData => {
       this.setState({
-        viewportData
+        viewportData,
       });
     });
   }
@@ -221,7 +250,7 @@ class OHIFCornerstoneViewport extends Component {
       childrenWithProps = this.props.children.map((child, index) => {
         return React.cloneElement(child, {
           viewportIndex: this.props.viewportIndex,
-          key: index
+          key: index,
         });
       });
     }

@@ -1,17 +1,22 @@
-import React, { Component } from 'react';
-import PropTypes from 'prop-types';
-import { Link, withRouter } from 'react-router-dom';
-import { Dropdown } from 'react-viewerbase';
 import './Header.css';
+import './Header.css';
+
+import { Link, withRouter } from 'react-router-dom';
+import React, { Component } from 'react';
+
+import { Dropdown } from 'react-viewerbase';
 import OHIFLogo from '../OHIFLogo/OHIFLogo.js';
-import ConnectedUserPreferencesModal from '../../connectedComponents/ConnectedUserPreferencesModal.js';
+import PropTypes from 'prop-types';
+import { AboutModal } from 'react-viewerbase';
+import { hotkeysManager } from './../../App.js';
+import { withTranslation } from 'react-i18next';
 
 class Header extends Component {
   static propTypes = {
     home: PropTypes.bool.isRequired,
     location: PropTypes.object.isRequired,
-    openUserPreferencesModal: PropTypes.func,
     children: PropTypes.node,
+    t: PropTypes.func.isRequired,
   };
 
   static defaultProps = {
@@ -19,32 +24,53 @@ class Header extends Component {
     children: OHIFLogo(),
   };
 
+  // onSave: data => {
+  //   const contextName = store.getState().commandContext.context;
+  //   const preferences = cloneDeep(store.getState().preferences);
+  //   preferences[contextName] = data;
+  //   dispatch(setUserPreferences(preferences));
+  //   dispatch(setUserPreferencesModalOpen(false));
+  //   OHIF.hotkeysUtil.setHotkeys(data.hotKeysData);
+  // },
+  // onResetToDefaults: () => {
+  //   dispatch(setUserPreferences());
+  //   dispatch(setUserPreferencesModalOpen(false));
+  //   OHIF.hotkeysUtil.setHotkeys();
+  // },
+
   constructor(props) {
     super(props);
+    this.state = { isUserPreferencesOpen: false, isOpen: false };
 
-    this.state = {
-      userPreferencesOpen: false,
-    };
+    this.loadOptions();
+  }
 
+  loadOptions() {
+    const { t } = this.props;
     this.options = [
       {
-        title: 'Preferences ',
-        icon: {
-          name: 'user',
+        title: t('About'),
+        icon: { name: 'info' },
+        onClick: () => {
+          this.setState({
+            isOpen: true,
+          });
         },
-        onClick: this.props.openUserPreferencesModal,
-      },
-      {
-        title: 'About',
-        icon: {
-          name: 'info',
-        },
-        link: 'http://ohif.org',
       },
     ];
+
+    this.hotKeysData = hotkeysManager.hotkeyDefinitions;
+  }
+
+  onUserPreferencesSave({ windowLevelData, hotKeysData }) {
+    // console.log(windowLevelData);
+    // console.log(hotKeysData);
+    // TODO: Update hotkeysManager
+    // TODO: reset `this.hotKeysData`
   }
 
   render() {
+    const { t } = this.props;
     return (
       <div className={`entry-header ${this.props.home ? 'header-big' : ''}`}>
         <div className="header-left-box">
@@ -53,7 +79,7 @@ class Header extends Component {
               to={this.props.location.studyLink}
               className="header-btn header-viewerLink"
             >
-              Back to Viewer
+              {t('Back to Viewer')}
             </Link>
           )}
 
@@ -67,19 +93,26 @@ class Header extends Component {
                 state: { studyLink: this.props.location.pathname },
               }}
             >
-              Study list
+              {t('Study list')}
             </Link>
           )}
         </div>
 
         <div className="header-menu">
-          <span className="research-use">INVESTIGATIONAL USE ONLY</span>
-          <Dropdown title="Options" list={this.options} align="right" />
-          <ConnectedUserPreferencesModal />
+          <span className="research-use">{t('INVESTIGATIONAL USE ONLY')}</span>
+          <Dropdown title={t('Options')} list={this.options} align="right" />
+          <AboutModal
+            {...this.state}
+            onCancel={() =>
+              this.setState({
+                isOpen: false,
+              })
+            }
+          />
         </div>
       </div>
     );
   }
 }
 
-export default withRouter(Header);
+export default withTranslation('Header')(withRouter(Header));
